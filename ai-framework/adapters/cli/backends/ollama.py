@@ -12,7 +12,7 @@ def invoke(
     response = httpx.post(
         f"{base_url}/api/generate",
         json={"model": model, "prompt": prompt, "stream": False},
-        timeout=300.0,
+        timeout=600.0,
     )
     response.raise_for_status()
     return response.json()["response"]

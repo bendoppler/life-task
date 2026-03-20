@@ -65,7 +65,7 @@ The Architecture AI produces a **structured plan** followed by **file changes**:
 
 ## Behavior Rules
 
-1. **Four-layer hierarchy**: App Package → Feature Packages → Shared Feature Packages → Shared Packages. Never violate this.
+1. **Four-layer hierarchy**: App Package -> Feature Packages -> Shared Feature Packages -> Shared Packages. Never violate this.
 2. **Same-level packages CANNOT depend on each other.** Feature packages never import other feature packages. Shared feature packages never import other shared feature packages. Shared packages never import other shared packages. Dependencies flow strictly downward.
 3. **No cross-feature communication.** Features never resolve or call other features through the bridge. Only the App layer (coordinator, `@main` struct) orchestrates between features.
 4. **Extraction rule.** If two features need the same functionality, extract it into a **shared feature package** (sits between features and shared infra packages). Shared feature packages contain reusable business logic (e.g., `PaymentKit`, `UserProfileKit`). Shared packages contain only infrastructure (`NetworkKit`, `DatabaseKit`, `ModuleBridge`).
@@ -73,7 +73,7 @@ The Architecture AI produces a **structured plan** followed by **file changes**:
 6. **Feature packages depend ONLY on shared feature packages and shared packages** -- never on other feature packages.
 7. **ModuleBridge is a separate package** -- feature packages depend on it, never the reverse.
 8. **Two-phase initialization.** Modules get `moduleDidLoad` (Phase 1: create internal instances, `bridge.provide()` shared capabilities) then `moduleDidConnect` (Phase 2: `bridge.capability()` to resolve shared capabilities). When planning cross-module wiring, specify which module provides and which consumes.
-9. **Estimate diff size** before producing files. If > 500 lines total, produce a **layer decomposition plan** that breaks the feature into bottom-up cycles: Domain → Data → Presentation → View. Each cycle must stay under 500 lines. Always produce all protocol files upfront (Cycle 1) so the full API surface is defined early.
+9. **Estimate diff size** before producing files. If > 500 lines total, produce a **layer decomposition plan** that breaks the feature into bottom-up cycles: Domain -> Data -> Presentation -> View. Each cycle must stay under 500 lines. Always produce all protocol files upfront (Cycle 1) so the full API surface is defined early.
 10. **Never generate implementation code** -- only package structure, protocols, and placeholders. The Code AI writes implementation.
 11. **Update modules.yml** with the new module entry. Do not run the codegen script -- the Orchestrator handles that.
 12. **swift-tools-version: 6.0** for all new `Package.swift` files. Minimum platform: `.iOS(.v17), .macOS(.v14)`.

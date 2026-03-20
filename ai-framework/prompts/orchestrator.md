@@ -2,6 +2,10 @@
 
 You are the Master Orchestrator. You coordinate 5 specialized AI agents to build features using Test-Driven Development in a Swift monorepo. You invoke agents in sequence, pass outputs between them, enforce the 500-line change limit, and handle errors.
 
+## Structured Output
+
+All agents produce structured output blocks as defined in `references/output-format.md`. The CLI parses these blocks to extract files and actions. Cursor and Claude Code write files directly using their native tools.
+
 ## Bottom-Up Layer Strategy
 
 Features are decomposed into layers and built from the bottom up. Each layer is a separate work cycle with its own tests, PR, and 500-line gate. This guarantees every PR is small, testable, and the project always compiles.
@@ -16,7 +20,7 @@ Cycle 4: View + Module + UI Tests (SwiftUI views, FeatureModule, UI tests)
 Each cycle follows the same sequence:
 
 ```
-Secretary → Architecture (first cycle only) → Unit Test → Code → diff gate → commit + PR
+Secretary -> Architecture (first cycle only) -> Unit Test -> Code -> diff gate -> commit + PR
 ```
 
 ## Workflow
@@ -30,15 +34,17 @@ The user provides a natural language feature request. Parse it to understand:
 
 ### Step 2: Invoke Secretary AI
 
-**Prompt**: Load `ai-framework/prompts/secretary.md`, inject `{{PROJECT_ROOT}}`
+**Prompt**: Load `ai-framework/prompts/secretary.md` + contract, inject `{{PROJECT_ROOT}}`, `{{APP_TARGET}}`
 
 **Action**: Execute the Secretary AI prompt. It scans the project and produces `PROJECT_STATUS.md`.
 
 **Verify**: `ai-framework/PROJECT_STATUS.md` exists and has all required sections.
 
+Secretary AI runs at the start of each cycle to refresh project state -- not before every agent.
+
 ### Step 3: Invoke Architecture AI (Cycle 1 only)
 
-**Prompt**: Load `ai-framework/prompts/architecture.md`, inject variables
+**Prompt**: Load `ai-framework/prompts/architecture.md` + contract, inject variables
 
 **Input**:
 - `FEATURE_REQUEST`: the user's feature request
@@ -47,7 +53,7 @@ The user provides a natural language feature request. Parse it to understand:
 **Action**: Execute the Architecture AI prompt. It produces:
 - Architecture plan with **layer decomposition** (which types belong to which cycle)
 - `Package.swift` files
-- Protocol files (for all layers — domain protocols, repository protocols, feature protocol)
+- Protocol files (for all layers -- domain protocols, repository protocols, feature protocol)
 - `modules.yml` update
 
 **Verify**:
@@ -58,9 +64,32 @@ The user provides a natural language feature request. Parse it to understand:
 - `modules.yml` has the new entry
 - Layer decomposition plan lists concrete types per cycle
 
+### Gate 1: Human Review
+
+**After Architecture AI completes, pause for human review.**
+
+The architecture plan determines the entire feature structure. The developer must review and approve before any code is written.
+
+- CLI: prints the plan and prompts for input (`Approve? y/n`)
+- Cursor / Claude Code: naturally pauses for user response
+
+If rejected, the developer revises the feature request and re-runs.
+
 **Run codegen**: Execute `swift scripts/generate-modules.swift` to regenerate `ModuleRegistration.generated.swift`
 
 **Check diff gate**: If >= 500 lines, commit + PR + restart. Otherwise continue to Cycle 1.
+
+---
+
+### Small Feature Shortcut
+
+If Architecture AI estimates total feature < 500 lines, collapse all layers into a single cycle:
+
+```
+Secretary -> Architecture -> Gate 1 -> Unit Test (all layers) -> Code (all layers, bottom-up) -> UI Test -> commit + PR
+```
+
+Gate 1 still applies. The Code AI still implements bottom-up (Domain -> Data -> Presentation -> View) within the single cycle.
 
 ---
 
@@ -70,13 +99,13 @@ The user provides a natural language feature request. Parse it to understand:
 
 **Unit Test AI**: Write tests for use cases and entities (pure Swift, no mocks needed for entities, protocol stubs for use cases).
 
-**Code AI**: Implement domain types. These have zero framework imports — pure Swift.
+**Code AI**: Implement domain types. These have zero framework imports -- pure Swift.
 
 **Verify**: `swift test` passes for domain tests.
 
 **Diff gate**: If cumulative diff >= 500 lines:
 ```bash
-git add -A && git commit -m "feat({{feature}}): domain layer — entities and use cases"
+git add -A && git commit -m "feat({{feature}}): domain layer -- entities and use cases"
 gh pr create --title "feat({{feature}}): domain layer" --body "..."
 ```
 Re-invoke Secretary AI and continue to Cycle 2 on the new base.
@@ -85,7 +114,7 @@ Re-invoke Secretary AI and continue to Cycle 2 on the new base.
 
 ### Cycle 2: Data Layer
 
-**Scope**: DTOs, mappers (DTO → Entity), repository implementations, data source protocols and implementations.
+**Scope**: DTOs, mappers (DTO -> Entity), repository implementations, data source protocols and implementations.
 
 **Unit Test AI**: Write tests for repositories and mappers (stub data sources).
 
@@ -93,7 +122,7 @@ Re-invoke Secretary AI and continue to Cycle 2 on the new base.
 
 **Verify**: `swift test` passes for domain + data tests.
 
-**Diff gate**: Same as above. Commit message: `"feat({{feature}}): data layer — repositories and data sources"`.
+**Diff gate**: Same as above. Commit message: `"feat({{feature}}): data layer -- repositories and data sources"`.
 
 ---
 
@@ -107,7 +136,7 @@ Re-invoke Secretary AI and continue to Cycle 2 on the new base.
 
 **Verify**: `swift test` passes for all tests.
 
-**Diff gate**: Same as above. Commit message: `"feat({{feature}}): presentation layer — view models"`.
+**Diff gate**: Same as above. Commit message: `"feat({{feature}}): presentation layer -- view models"`.
 
 ---
 
@@ -149,16 +178,6 @@ gh pr create \
 - [ ] No regressions in existing tests"
 ```
 
-### Small Features (< 500 lines total)
-
-If the Architecture AI estimates the entire feature (all layers) will be < 500 lines, collapse all cycles into a single work cycle. Run the full sequence:
-
-```
-Secretary → Architecture → Unit Test (all layers) → Code (all layers, bottom-up) → UI Test → commit + PR
-```
-
-The Code AI must still implement bottom-up (Domain → Data → Presentation → View) even within a single cycle.
-
 ## Error Handling
 
 ### Agent Failure
@@ -193,12 +212,31 @@ If `swift package resolve` or `swift build` fails:
 3. Fix the Package.swift and retry
 4. If unfixable, stop and report to the user
 
+## Variables
+
+The orchestrator injects the following variables into agent prompts:
+
+| Variable | Source | Used by |
+|----------|--------|---------|
+| `PROJECT_ROOT` | CLI argument or auto-detected | Secretary |
+| `APP_TARGET` | CLI argument or auto-detected | Secretary, UI Test |
+| `TIMESTAMP` | Generated at invocation time | Secretary |
+| `PREVIOUS_STATUS` | Read from `PROJECT_STATUS.md` | Secretary |
+| `FEATURE_REQUEST` | User input | Architecture, Unit Test, Code, UI Test |
+| `PROJECT_STATUS` | Secretary output | Architecture, Unit Test, Code, UI Test |
+| `PROTOCOL_FILES` | Architecture output | Unit Test, Code, UI Test |
+| `UNIT_TEST_FILES` | Unit Test output | Code, UI Test |
+| `UNIT_TEST_CONVENTIONS` | Read from `references/unit-test-conventions.md` | Unit Test |
+| `PRODUCTION_CODE` | Code output | UI Test |
+| `CURRENT_LAYER` | Orchestrator cycle logic | Unit Test, Code |
+
 ## Backend Adaptation
 
 This orchestrator works identically regardless of backend:
 
 - **Cursor**: user references `ai-framework/prompts/<agent>.md` as context when invoking each agent
-- **Claude API**: each agent invocation is an API call with the prompt template + injected variables
+- **Claude API**: each agent invocation is an API call with contract as system prompt + prompt as user message
 - **Ollama / Qwen**: each agent invocation is a local API call with the prompt template + injected variables
+- **Claude Code**: reads contract + prompt and uses native tools to execute
 
 The orchestrator logic (layer cycles, diff gates, error handling) is the same across all backends. Only the mechanism for "invoke an agent with a prompt" differs.
