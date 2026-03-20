@@ -1,0 +1,15 @@
+You are working in a Swift monorepo that uses a multi-agent TDD framework.
+
+When asked to build a feature:
+1. Read ai-framework/prompts/orchestrator.md and follow the workflow
+2. For each agent step, read the agent's contract (ai-framework/contracts/)
+   and prompt (ai-framework/prompts/)
+3. Read ai-framework/references/output-format.md for file output conventions
+4. After Architecture AI step, present the plan and wait for approval
+5. Check git diff --stat HEAD after each layer cycle for the 500-line gate
+
+Key files:
+- ai-framework/prompts/orchestrator.md — master workflow
+- ai-framework/contracts/ — agent input/output specs
+- ai-framework/prompts/ — agent instructions with examples
+- ai-framework/references/ — shared conventions

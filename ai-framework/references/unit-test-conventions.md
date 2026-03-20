@@ -9,7 +9,7 @@ That keeps unit tests fast, isolated, and deterministic.
 
 **Goals**
 
-* Isolate the unit’s logic from I/O and global state so it runs purely in memory.
+* Isolate the unit's logic from I/O and global state so it runs purely in memory.
 * Control nondeterminism (time, UUIDs, random numbers) by injecting providers instead of calling globals.
 * Allow unit tests to inject mocks in place of real dependencies.
 
@@ -119,8 +119,8 @@ They should fail when production code changes in ways that alter behavior.
 
 **Example: Constants trap**
 
-* ❌ Bad: asserting against constants defined in production.
-* ✅ Better: assert expected behavior directly.
+* Bad: asserting against constants defined in production.
+* Better: assert expected behavior directly.
 
 ```swift
 // Production code
@@ -131,13 +131,13 @@ struct MyButton {
     let height: Double = UIConstants.buttonHeight
 }
 
-// ❌ Problematic test (tautological - just checks constant against itself)
+// Bad test (tautological - just checks constant against itself)
 @Test("button height matches constant")
 func buttonHeight() {
     #expect(MyButton().height == UIConstants.buttonHeight)
 }
 
-// ✅ Better test (verifies actual expected value)
+// Better test (verifies actual expected value)
 @Test("button height is 44 points")
 func buttonHeight() {
     #expect(MyButton().height == 44.0)
@@ -156,7 +156,7 @@ func buttonHeight() {
 
 ### 1) Fast
 
-* Keep runtime ≤ 0.1s per test.
+* Keep runtime <= 0.1s per test.
 * Avoid servers, containers, sleep.
 * Use fakes instead of real I/O.
 
@@ -207,7 +207,7 @@ func moneyFormatting() {
 
 ---
 
-## 3. Structure of Unit Tests — Given / When / Then
+## 3. Structure of Unit Tests -- Given / When / Then
 
 **Why this structure?**
 
@@ -312,7 +312,7 @@ func auditLogging() throws {
 
 ### Assertions
 
-**`#expect`** – For most assertions (similar to XCTest's `XCTAssert*`)
+**`#expect`** -- For most assertions (similar to XCTest's `XCTAssert*`)
 ```swift
 #expect(result == 42)
 #expect(user.name == "Alice")
@@ -320,7 +320,7 @@ func auditLogging() throws {
 #expect(items.count == 3)
 ```
 
-**`#require`** – For critical preconditions that must pass (similar to XCTest's `XCTUnwrap`)
+**`#require`** -- For critical preconditions that must pass (similar to XCTest's `XCTUnwrap`)
 * Stops test execution immediately if the requirement fails
 * Use for unwrapping optionals or validating preconditions
 * Returns the unwrapped value
@@ -330,14 +330,14 @@ func auditLogging() throws {
 func userProcessing() throws {
     // Given
     let response = try fetchUserResponse()
-    
+
     // Use #require to unwrap - test stops here if nil
     let user = try #require(response.user)
     let email = try #require(user.email)
-    
+
     // When - this only runs if requirements above passed
     let result = processUser(user)
-    
+
     // Then
     #expect(result.isValid)
 }
@@ -350,7 +350,7 @@ func userProcessing() throws {
 
 ### Confirmation (Testing Async Callbacks)
 
-**`await confirmation`** – Verifies that a callback or closure is called (similar to XCTest's `XCTestExpectation`)
+**`await confirmation`** -- Verifies that a callback or closure is called (similar to XCTest's `XCTestExpectation`)
 
 Use this when testing asynchronous code where you need to verify a completion handler or delegate method is called:
 
@@ -359,7 +359,7 @@ Use this when testing asynchronous code where you need to verify a completion ha
 func dataLoadingCompletion() async throws {
     // Given
     let service = DataService()
-    
+
     // When & Then
     await confirmation("completion handler called") { confirm in
         service.loadData { result in
@@ -393,21 +393,21 @@ Use `@Suite` to group related tests with descriptive names. You can also nest su
 ```swift
 @Suite("User Service Tests")
 struct UserServiceTests {
-    
+
     @Suite("Authentication")
     struct AuthenticationTests {
         @Test("validates correct credentials")
         func validCredentials() { }
-        
+
         @Test("rejects invalid password")
         func invalidPassword() { }
     }
-    
+
     @Suite("Profile Management")
     struct ProfileTests {
         @Test("updates user profile successfully")
         func profileUpdate() { }
-        
+
         @Test("validates email format")
         func emailValidation() { }
     }

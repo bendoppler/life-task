@@ -16,20 +16,11 @@ App Package (top) -> Feature Packages -> Shared Feature Packages -> Shared Packa
 
 - **App Package**: root `Package.swift` with `@main` entry point. Depends on all feature implementations. The ONLY layer that coordinates between features.
 - **Feature Packages**: one `Package.swift` per feature in `Packages/`. Each has TWO library targets:
-  - `{{Feature}}Protocol` — public interface (protocols only)
-  - `{{Feature}}` — concrete implementation
+  - `{{Feature}}Protocol` -- public interface (protocols only)
+  - `{{Feature}}` -- concrete implementation
   - Plus a `{{Feature}}Tests` test target
 - **Shared Feature Packages**: extracted business logic that multiple features need. Lives in `Packages/` alongside feature packages but at a lower dependency level. Examples: `PaymentKit` (shared payment logic), `UserProfileKit` (shared user model), `AnalyticsKit` (shared tracking). These follow the same Protocol/Implementation split as feature packages.
 - **Shared Packages**: infrastructure concerns with no business logic. `ModuleBridge` (separate `Package.swift`), `NetworkKit`, `DatabaseKit`, etc.
-
-### Dependency Rules
-
-- **Packages at the same level CANNOT depend on each other.** Feature packages never depend on other feature packages. Shared feature packages never depend on other shared feature packages. Shared packages never depend on other shared packages.
-- Dependencies flow strictly downward: App → Features → Shared Features → Shared
-- Protocol targets depend on ModuleBridge only (if needed for `FeatureModule`) or nothing
-- App Package is the ONLY place that depends on multiple feature packages — it is the coordination layer
-- No cross-feature communication: features never resolve or call other features. Only the App layer orchestrates between features.
-- **Extraction rule**: if a feature needs functionality from another feature, that is a signal to extract the shared logic into a **shared feature package**. Feature packages NEVER import each other — they import the shared feature package instead.
 
 ### ModuleBridge Integration
 
@@ -38,13 +29,13 @@ Every feature module:
 2. Implements the feature's Protocol (e.g., `AuthenticationProviding`)
 3. Is registered in `modules.yml`
 4. Gets two-phase initialization + three scene-phase callbacks:
-   - `moduleDidLoad(bridge:)` — Phase 1: create internal instances. If this module provides shared capabilities, call `bridge.provide(Protocol.self, instance:)` here.
-   - `moduleDidConnect(bridge:)` — Phase 2: ALL modules have completed `moduleDidLoad`. Resolve shared capabilities via `bridge.capability(Protocol.self)` here. Order-independent.
-   - `didBecomeActive(bridge:)`, `didBecomeInactive(bridge:)`, `didEnterBackground(bridge:)` — scene phase callbacks
+   - `moduleDidLoad(bridge:)` -- Phase 1: create internal instances. If this module provides shared capabilities, call `bridge.provide(Protocol.self, instance:)` here.
+   - `moduleDidConnect(bridge:)` -- Phase 2: ALL modules have completed `moduleDidLoad`. Resolve shared capabilities via `bridge.capability(Protocol.self)` here. Order-independent.
+   - `didBecomeActive(bridge:)`, `didBecomeInactive(bridge:)`, `didEnterBackground(bridge:)` -- scene phase callbacks
 
 ModuleBridge has two registration systems:
-- `register`/`resolve` — for feature modules (keyed by feature protocol type)
-- `provide`/`capability` — for shared capabilities (keyed by shared feature protocol type, used for cross-module wiring without cross-feature imports)
+- `register`/`resolve` -- for feature modules (keyed by feature protocol type)
+- `provide`/`capability` -- for shared capabilities (keyed by shared feature protocol type, used for cross-module wiring without cross-feature imports)
 
 ### modules.yml Format
 
@@ -62,10 +53,10 @@ Given `{{FEATURE_REQUEST}}` and `{{PROJECT_STATUS}}`:
 
 ### Step 1: Analyze
 
-- What does this feature need to expose to other modules? → Protocol
-- What other modules does it need? → Dependencies on their Protocol targets
-- Does it need shared infrastructure (network, database)? → Shared package dependencies
-- How big will this be? → Estimate diff size
+- What does this feature need to expose to other modules? -> Protocol
+- What other modules does it need? -> Dependencies on their Protocol targets
+- Does it need shared infrastructure (network, database)? -> Shared package dependencies
+- How big will this be? -> Estimate diff size
 
 ### Step 2: Estimate Diff Size and Plan Layer Decomposition
 
@@ -118,7 +109,7 @@ let package = Package(
             dependencies: [
                 "{{FeatureName}}Protocol",
                 .product(name: "ModuleBridge", package: "ModuleBridge"),
-                // Shared feature packages and shared packages only — NEVER other feature packages
+                // Shared feature packages and shared packages only -- NEVER other feature packages
             ]
         ),
         .testTarget(
@@ -170,18 +161,8 @@ Add the new module entry to `{{PROJECT_ROOT}}/modules.yml`.
 
 Add the new package dependency and product to the root `Package.swift`.
 
-## Output
+## Output Format
 
-Produce all files listed above. Output the Architecture Plan first (as markdown), then the file contents.
+Output all files using the format defined in `references/output-format.md`.
 
-## Rules
-
-1. Never generate implementation code — only structure, protocols, and placeholders
-2. Protocol targets must be framework-free (no SwiftUI, no SwiftData, Foundation only if needed)
-3. Always include all Apple platforms in `Package.swift`
-4. One protocol file per public protocol
-5. Estimate diff size and split if > 500 lines
-6. Cross-check `{{PROJECT_STATUS}}` to avoid duplicate packages or conflicting names
-7. **Same-level packages CANNOT depend on each other.** Feature packages never import other feature packages. Shared feature packages never import other shared feature packages. Shared packages never import other shared packages. Dependencies flow strictly downward: App → Features → Shared Features → Shared.
-8. **No cross-feature communication.** Features never resolve or call other features. Only the App layer coordinates between features.
-9. **Extraction rule.** If two features need the same functionality, extract it into a **shared feature package** (sits between features and shared packages). Feature packages NEVER import each other — they import the shared feature package instead. Shared feature packages contain business logic; shared packages contain only infrastructure.
+Produce the Architecture Plan first (as markdown), then all file contents as file blocks.

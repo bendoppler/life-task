@@ -86,73 +86,10 @@ View -> Presentation -> Domain <- Data
 
 ### Two-Phase Module Lifecycle
 
-- `moduleDidLoad(bridge:)` — Phase 1: create internal instances. If providing shared capabilities, call `bridge.provide(Protocol.self, instance:)`.
-- `moduleDidConnect(bridge:)` — Phase 2: all modules completed Phase 1. Resolve shared capabilities via `bridge.capability(Protocol.self)`. Order-independent.
-- `didBecomeActive`, `didBecomeInactive`, `didEnterBackground` — scene phase callbacks.
-- `bridge.bootstrap()` runs Phase 1 for ALL modules, then Phase 2 for ALL modules — guarantees safe wiring.
-
-## Swift Expert Techniques (required where appropriate)
-
-### Enums with Associated Values
-
-Use for all finite-state modeling:
-
-```swift
-enum LoadState<T: Sendable>: Sendable {
-    case idle
-    case loading
-    case loaded(T)
-    case failed(Error)
-}
-```
-
-### Generics with Conditional Conformance
-
-```swift
-extension LoadState: Equatable where T: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool { ... }
-}
-```
-
-### Type Abstraction Hierarchy
-
-1. Concrete types (prefer when type is known)
-2. Generics (when caller controls the type)
-3. Opaque types `some` (when function controls the type)
-4. Existentials `any` (only for heterogeneous collections)
-
-### Value Types by Default
-
-- Structs for Entities, DTOs, value objects
-- Enums for state, errors, configuration
-- Classes only when identity matters: `@Observable` ViewModels, `@Model` entities, `FeatureModule` implementations
-
-### Error Handling
-
-- Typed throws per layer: `throws(NetworkError)`, `throws(RepositoryError)`, `throws(DomainError)`
-- Error enums with specific cases, not catch-all
-- Map errors at layer boundaries (Data errors -> Domain errors)
-
-### Concurrency
-
-- `async/await` for all asynchronous work
-- `Task` for launching async work from synchronous contexts
-- `TaskGroup` for parallel operations
-- `@MainActor` on ViewModels
-- `Sendable` conformance on all types crossing boundaries
-
-### Dependency Injection
-
-- Constructor injection for all dependencies
-- Protocols for all external dependencies (matches Unit Test AI seams)
-- Default arguments for production implementations:
-
-```swift
-init(
-    repository: UserRepositoryProtocol = UserRepository(),
-    clock: ClockProtocol = SystemClock()
-) { ... }
-```
+- `moduleDidLoad(bridge:)` -- Phase 1: create internal instances. If providing shared capabilities, call `bridge.provide(Protocol.self, instance:)`.
+- `moduleDidConnect(bridge:)` -- Phase 2: all modules completed Phase 1. Resolve shared capabilities via `bridge.capability(Protocol.self)`. Order-independent.
+- `didBecomeActive`, `didBecomeInactive`, `didEnterBackground` -- scene phase callbacks.
+- `bridge.bootstrap()` runs Phase 1 for ALL modules, then Phase 2 for ALL modules -- guarantees safe wiring.
 
 ## Behavior Rules
 
@@ -162,6 +99,5 @@ init(
 4. **No dead code.** Only write code that is exercised by tests or required by the architecture.
 5. **No comments narrating code.** Comments only for non-obvious intent, trade-offs, or API contracts.
 6. **Keep files small.** One type per file. If a file exceeds ~100 lines, split it.
-7. **No cross-feature imports.** A feature package NEVER imports another feature package (neither Protocol nor Implementation). Features depend only on shared feature packages and shared packages. Cross-feature coordination is the App layer's responsibility.
-   - If you need logic that another feature has, it belongs in a **shared feature package** (e.g., `PaymentKit`, `UserProfileKit`). Ask the Architecture AI to extract it.
-8. **Bottom-up order.** Always implement Domain → Data → Presentation → View. When `CURRENT_LAYER` is set, implement ONLY that layer. When not set, implement all layers but still in bottom-up order. Each layer's types depend only on layers below it (already implemented).
+7. **No cross-feature imports.** A feature package NEVER imports another feature package. Features depend only on shared feature packages and shared packages.
+8. **Bottom-up order.** Always implement Domain -> Data -> Presentation -> View. When `CURRENT_LAYER` is set, implement ONLY that layer.

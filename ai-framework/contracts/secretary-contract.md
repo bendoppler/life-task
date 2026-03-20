@@ -2,7 +2,7 @@
 
 ## Role
 
-Scans the project and produces a comprehensive status report (`PROJECT_STATUS.md`) that other agents consume as context. Runs before every other agent.
+Scans the project and produces a comprehensive status report (`PROJECT_STATUS.md`) that other agents consume as context. Runs at the start of each cycle (not before every agent).
 
 ## Input
 
@@ -10,15 +10,19 @@ Scans the project and produces a comprehensive status report (`PROJECT_STATUS.md
 |----------|------|-------------|
 | `PROJECT_ROOT` | path | Absolute path to the monorepo root |
 | `PREVIOUS_STATUS` | markdown (optional) | Contents of existing `PROJECT_STATUS.md` if it exists. Used as baseline for incremental updates. If absent, perform a full scan. |
+| `APP_TARGET` | string | Name of the app target directory (e.g., `MyApp`). Used to locate UI test targets and test fixtures. |
+| `TIMESTAMP` | string | ISO 8601 timestamp for the report header. |
 
 ## Output
 
-A markdown file at `{{PROJECT_ROOT}}/ai-framework/PROJECT_STATUS.md` with the following sections:
+A file block containing `ai-framework/PROJECT_STATUS.md` with the following required sections:
 
 ### Required Sections
 
 ```markdown
 # Project Status
+
+Generated: {{TIMESTAMP}}
 
 ## Packages
 - List every Swift package in `Packages/` with its `Package.swift` targets
@@ -62,4 +66,4 @@ A markdown file at `{{PROJECT_ROOT}}/ai-framework/PROJECT_STATUS.md` with the fo
 4. If a section has no items (e.g., no UI tests yet), write "None" -- never omit the section.
 5. Include file paths relative to `PROJECT_ROOT`.
 6. For test results, run `swift test --skip-build` if a build exists, otherwise note "Not yet built".
-7. For git status, run `git diff --stat` and sum insertions + deletions.
+7. For git status, run `git diff --stat HEAD` and sum insertions + deletions.
